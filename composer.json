@@ -13,6 +13,7 @@
         "inertiajs/inertia-laravel": "*",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "spatie/pdf-to-text": "*",
         "tightenco/ziggy": "*"
     },
     "require-dev": {

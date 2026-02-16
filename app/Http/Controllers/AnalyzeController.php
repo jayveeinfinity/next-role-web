@@ -15,8 +15,7 @@ class AnalyzeController extends Controller
 
     public function index(Request $request) {
         $jobDescription = $request->jobDescription;
-
-        $portfolio = "";
+        $portfolio = $request->portfolio;
 
         $response = $this->aiService->generate($portfolio, $jobDescription);
 

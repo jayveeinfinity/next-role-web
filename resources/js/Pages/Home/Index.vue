@@ -1,12 +1,15 @@
 <script setup>
+    import { ref } from 'vue'
     import { useForm } from '@inertiajs/vue3';
     import HomeLayout from '@Shared/Layouts/Home.vue';
-
+    import api from '@/axios.js';
+ 
     defineOptions({
         layout: HomeLayout
     });
 
     const form = useForm({
+        portfolio: '',
         jobDescription: ''
     });
 
@@ -19,6 +22,57 @@
         form.post('/api/analyze', {
             preserveScroll: true
         });
+    }
+
+    const fileInput = ref(null)
+    const uploading = ref(false)
+    const error = ref(null)
+        
+    const triggerFileInput = () => {
+        fileInput.value.click()
+    }
+
+    const handleFileSelect = (event) => {
+        const file = event.target.files[0]
+        if (file) {
+            uploadFile(file)
+        }
+    }
+
+    const uploadFile = async (file) => {
+        error.value = null
+
+        const allowedTypes = [
+            'application/pdf'
+        ]
+
+        if (!allowedTypes.includes(file.type)) {
+            error.value = 'Only PDF or DOCX files are allowed.'
+            return
+        }
+
+        const formData = new FormData()
+        formData.append('portfolio', file)
+
+        try {
+            uploading.value = true
+
+            const response = await api.post('/api/portfolio/upload', formData, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            form.portfolio = response.data.extracted_text;
+
+            console.log(form.portfolio)
+
+        } catch (err) {
+            error.value = 'Upload failed. Please try again.'
+        } finally {
+            uploading.value = false
+        }
     }
 </script>
 
@@ -77,15 +131,29 @@
                                 <p class="text-slate-900 dark:text-white text-base font-bold">Upload Resume</p>
                                 <p class="text-slate-500 dark:text-slate-400 text-sm">Drag &amp; drop your PDF or Docx here</p>
                             </div>
-                            <button class="mt-2 px-4 py-2 bg-slate-200 dark:bg-[#283039] text-slate-900 dark:text-white text-xs font-bold rounded-lg hover:bg-primary hover:text-white transition-colors">
+                            <button @click="triggerFileInput" class="mt-2 px-4 py-2 bg-slate-200 dark:bg-[#283039] text-slate-900 dark:text-white text-xs font-bold rounded-lg hover:bg-primary hover:text-white transition-colors">
                                 Browse Files
                             </button>
+
+                            <!-- Hidden File Input -->
+                                <input
+                                ref="fileInput"
+                                type="file"
+                                class="hidden"
+                                accept=".pdf"
+                                @change="handleFileSelect"
+                                />
                         </div>
+                        
+                        <div v-if="uploading" class="mt-4 text-sm text-primary">
+                            Uploading...
+                        </div>
+
                         <div class="flex flex-col gap-2">
                             <label class="text-slate-900 dark:text-white text-sm font-semibold">Job Description</label>
                             <textarea v-model="form.jobDescription" class="w-full min-h-[120px] rounded-xl border border-slate-300 dark:border-[#3b4754] bg-white dark:bg-[#1c2127] p-4 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent resize-none placeholder:text-slate-400 dark:placeholder:text-[#9dabb9]" placeholder="Paste the job requirements here..."></textarea>
                         </div>
-                        <button @click="analyzeFitScore" type="button" class="w-full py-4 bg-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all">
+                        <button @click="analyzeFitScore" :disabled="!form.portfolio || !form.jobDescription" type="button" class="w-full py-4 bg-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all">
                             <span class="material-symbols-outlined">auto_fix_high</span>
                                 Analyze Fit Score
                         </button>
