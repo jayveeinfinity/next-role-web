@@ -8,6 +8,13 @@
     defineOptions({
         layout: HomeLayout
     });
+
+    const getInitials = (name = '') => {
+        const words = name.trim().split(/\s+/);
+        if (words.length === 1) return words[0][0].toUpperCase();
+
+        return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+    }
 </script>
 
 <template>
@@ -19,7 +26,7 @@
                     <span class="text-[10px] font-bold uppercase tracking-widest">AI-Powered Fit Engine</span>
                 </div>
                 <h1 class="text-white text-4xl font-black leading-tight tracking-[-0.033em]">Analysis Dashboard</h1>
-                <p class="text-[#9dabb9] text-base font-normal leading-normal">Precision alignment for: <span class="text-white font-medium italic">Senior Software Engineer at TechCorp Solutions</span></p>
+                <p class="text-[#9dabb9] text-base font-normal leading-normal">Precision alignment for: <span class="text-white font-medium italic">{{ response?.target_destination?.position }} at {{ response?.target_destination?.company_name }}</span></p>
             </div>
             <div class="flex gap-3">
                 <button class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-[#1a232e] text-white text-sm font-bold leading-normal border border-[#283039] hover:bg-[#283039] transition-colors">
@@ -43,7 +50,7 @@
                         <div class="flex flex-col gap-2">
                             <p class="text-[#9dabb9] text-xs font-semibold uppercase tracking-wider">Candidate Source</p>
                             <div class="flex items-center gap-3">
-                                <div class="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">JD</div>
+                                <div class="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">{{ getInitials(response?.applicant_information?.name) }}</div>
                                 <div>
                                     <p class="text-white text-sm font-bold">{{ response?.applicant_information?.name }}</p>
                                     <p class="text-[#9dabb9] text-xs">{{ response?.applicant_information?.position }} ({{ response?.applicant_information?.years_of_experience }})</p>
