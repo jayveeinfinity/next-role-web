@@ -23,18 +23,23 @@
             preserveScroll: true
         });
     }
+    
+    const fileInput = ref(null);
+    const fileRef = ref(null);
+    const uploading = ref(false);
+    const uploadProgress = ref(0);
+    const error = ref(null);
 
-    const fileInput = ref(null)
-    const uploading = ref(false)
-    const error = ref(null)
+    let controller = null
         
     const triggerFileInput = () => {
         fileInput.value.click()
     }
 
     const handleFileSelect = (event) => {
-        const file = event.target.files[0]
+        const file = event.target.files[0];
         if (file) {
+            fileRef.value = file;
             uploadFile(file)
         }
     }
@@ -55,23 +60,45 @@
         formData.append('portfolio', file)
 
         try {
-            uploading.value = true
+            uploading.value = true;
+            uploadProgress.value = 0;
+            error.value = null;
+
+            controller = new AbortController();
 
             const response = await api.post('/api/portfolio/upload', formData, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Content-Type': 'multipart/form-data'
+                },
+                signal: controller.signal,
+                onUploadProgress: (progressEvent) => {
+                    if (progressEvent.total) {
+                        uploadProgress.value = Math.round(
+                            (progressEvent.loaded * 100) / progressEvent.total
+                        );
+                        console.log(`Upload progress: ${uploadProgress.value}%`);
+                    }
                 }
             });
 
             form.portfolio = response.data.extracted_text;
 
-            console.log(form.portfolio)
-
         } catch (err) {
-            error.value = 'Upload failed. Please try again.'
+            if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+                error.value = 'Upload canceled.';
+            } else {
+                error.value = 'Upload failed. Please try again.';
+            }
         } finally {
-            uploading.value = false
+            uploading.value = false;
+            controller = null;
+        }
+    }
+
+    const cancelUpload = () => {
+        if (controller) {
+            controller.abort()
         }
     }
 </script>
@@ -124,16 +151,18 @@
                             <span class="font-bold text-slate-900 dark:text-white">Analysis Compass</span>
                         </div>
                         <div class="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-[#3b4754] px-6 py-10 hover:border-primary transition-colors cursor-pointer group bg-slate-50/50 dark:bg-transparent">
-                            <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                                <span class="material-symbols-outlined text-3xl">cloud_upload</span>
+                            <div v-show="!form.portfolio && !uploading" @click="triggerFileInput" class="flex flex-col items-center gap-4">
+                                <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                    <span class="material-symbols-outlined text-3xl">cloud_upload</span>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-slate-900 dark:text-white text-base font-bold">Upload Resume</p>
+                                    <p class="text-slate-500 dark:text-slate-400 text-sm">Drag &amp; drop your PDF or Docx here</p>
+                                </div>
+                                <button class="mt-2 px-4 py-2 bg-slate-200 dark:bg-[#283039] text-slate-900 dark:text-white text-xs font-bold rounded-lg hover:bg-primary hover:text-white transition-colors">
+                                    Browse Files
+                                </button>
                             </div>
-                            <div class="text-center">
-                                <p class="text-slate-900 dark:text-white text-base font-bold">Upload Resume</p>
-                                <p class="text-slate-500 dark:text-slate-400 text-sm">Drag &amp; drop your PDF or Docx here</p>
-                            </div>
-                            <button @click="triggerFileInput" class="mt-2 px-4 py-2 bg-slate-200 dark:bg-[#283039] text-slate-900 dark:text-white text-xs font-bold rounded-lg hover:bg-primary hover:text-white transition-colors">
-                                Browse Files
-                            </button>
 
                             <!-- Hidden File Input -->
                                 <input
@@ -143,10 +172,33 @@
                                 accept=".pdf"
                                 @change="handleFileSelect"
                                 />
-                        </div>
-                        
-                        <div v-if="uploading" class="mt-4 text-sm text-primary">
-                            Uploading...
+                            
+                            <div v-show="form.portfolio || uploading" class="flex flex-col items-center gap-4">
+                                <div class="w-16 h-16 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined text-4xl">description</span>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-slate-900 dark:text-white text-base font-bold">{{ fileRef?.value?.name }}</p>
+                                    <p v-show="!uploading" class="text-emerald-500 dark:text-emerald-400 text-sm flex items-center justify-center gap-1">
+                                        <span class="material-symbols-outlined text-sm">check_circle</span>
+                                        File uploaded successfully
+                                    </p>
+                                    <p v-show="uploading" class="text-primary text-sm font-medium italic">Uploading Resume...</p>
+                                    <div v-show="uploading" class="flex items-center gap-4 px-4 md:px-10 min-w-60">
+                                        <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                            <div class="h-full bg-primary rounded-full" :style="{ width: uploadProgress + '%' }"></div>
+                                        </div>
+                                        <span class="text-xs font-bold text-slate-500 dark:text-slate-400">{{ uploadProgress }}%</span>
+                                        <button @click="cancelUpload" class="text-slate-400 hover:text-red-500 transition-colors flex items-center">
+                                            <span class="material-symbols-outlined text-lg">close</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button @click="triggerFileInput" class="px-4 text-slate-500 dark:text-slate-400 text-xs font-bold rounded-lg hover:text-primary transition-colors flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-sm">edit</span>
+                                    Change File
+                                </button>
+                            </div>
                         </div>
 
                         <div class="flex flex-col gap-2">
